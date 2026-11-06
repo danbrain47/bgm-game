@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Game BGM 猜歌遊戲 - Google 雲端硬碟版</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <style>
+    body { background-color: #0f172a; color: #f8fafc; font-family: sans-serif; }
+    .neon-border { box-shadow: 0 0 15px rgba(59, 130, 246, 0.5); }
+    .audio-wave { display: flex; align-items: flex-end; gap: 4px; height: 30px; }
+    .audio-bar { width: 6px; background: #3b82f6; border-radius: 3px; animation: bounce 1s infinite alternate; }
+    .audio-bar:nth-child(2) { animation-delay: 0.2s; }
+    .audio-bar:nth-child(3) { animation-delay: 0.4s; }
+    .audio-bar:nth-child(4) { animation-delay: 0.6s; }
+    @keyframes bounce { 0% { height: 5px; } 100% { height: 30px; } }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4">
+
+  <audio id="globalAudio" crossorigin="anonymous"></audio>
+
+  <!-- 音訊解鎖遮罩 -->
+  <div id="audioUnlockModal" class="fixed inset-0 bg-slate-900/95 z-50 flex flex-col items-center justify-center p-6 text-center hidden">
+    <i class="fa-solid fa-volume-high text-6xl text-blue-400 mb-4 animate-bounce"></i>
+    <h2 class="text-2xl font-bold mb-2">點擊按鈕開啟音效</h2>
+    <button onclick="unlockAudio()" class="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-xl font-bold text-lg neon-border transition">
+      進入遊戲
+    </button>
+  </div>
+
+  <!-- 主選單 -->
+  <div id="setupView" class="w-full max-w-md bg-slate-800 p-6 rounded-2xl border border-slate-700 neon-border">
+    <h1 class="text-3xl font-extrabold text-center mb-6 text-blue-400">
+      <i class="fa-solid fa-gamepad mr-2"></i>BGM 猜歌大對決
+    </h1>
+    <div class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium mb-1 text-slate-300">你的暱稱 / 玩家名稱</label>
+        <input type="text" id="nicknameInput" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:outline-none focus:border-blue-500" placeholder="輸入名字">
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1 text-slate-300">房間代碼 (多人派對用)</label>
+        <input type="text" id="roomCodeInput" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:outline-none focus:border-blue-500" placeholder="6 位數房號 (主持人免填)">
+      </div>
+      
+      <div class="grid grid-cols-2 gap-3 pt-2">
+        <button onclick="createRoom()" class="bg-purple-600 hover:bg-purple-500 text-white font-bold py-3 rounded-lg transition text-sm">
+          <i class="fa-solid fa-house-laptop mr-1"></i> 建立房間 (主持人)
+        </button>
+        <button onclick="joinRoom()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg transition text-sm">
+          <i class="fa-solid fa-users mr-1"></i> 加入房間 (玩家)
+        </button>
+      </div>
+
+      <div class="pt-2 border-t border-slate-700">
+        <button onclick="startSinglePlayer()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-lg transition">
+          <i class="fa-solid fa-user mr-2"></i> 單人闖關練習模式
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 主持人控制台 (多人) ================= -->
+  <div id="hostView" class="w-full max-w-4xl bg-slate-800 p-6 rounded-2xl border border-slate-700 hidden">
+    <div class="flex justify-between items-center mb-6 border-b border-slate-700 pb-4">
+      <div>
+        <span class="text-xs text-slate-400 uppercase">Host Control</span>
+        <h2 class="text-2xl font-bold text-purple-400">房間代碼: <span id="hostRoomDisplay" class="text-white">------</span></h2>
+      </div>
+      <div class="text-right">
+        <span id="playerCount" class="text-sm bg-slate-700 px-3 py-1 rounded-full">在線人數: 0</span>
+      </div>
+    </div>
+
+    <!-- 音樂控制面板 -->
+    <div class="bg-slate-900 p-4 rounded-xl border border-slate-700 mb-6">
+      <h3 class="text-lg font-bold mb-3 text-blue-400"><i class="fa-solid fa-music mr-2"></i>音樂播放與音量控制</h3>
+      
+      <div class="flex flex-wrap gap-2 mb-4 items-center">
+        <button onclick="broadcastAudio('play')" class="bg-green-600 hover:bg-green-500 text-white font-bold px-4 py-2 rounded-lg text-sm"><i class="fa-solid fa-play mr-1"></i> 播放</button>
+        <button onclick="broadcastAudio('pause')" class="bg-yellow-600 hover:bg-yellow-500 text-white font-bold px-4 py-2 rounded-lg text-sm"><i class="fa-solid fa-pause mr-1"></i> 暫停</button>
+        <button onclick="audioRewind()" class="bg-slate-700 hover:bg-slate-600 text-white font-bold px-4 py-2 rounded-lg text-sm"><i class="fa-solid fa-backward-step mr-1"></i> 倒退 5秒</button>
+        <button onclick="audioForward()" class="bg-slate-700 hover:bg-slate-600 text-white font-bold px-4 py-2 rounded-lg text-sm"><i class="fa-solid fa-forward-step mr-1"></i> 快轉 5秒</button>
+        
+        <div class="flex items-center gap-2 ml-auto bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700">
+          <i class="fa-solid fa-volume-high text-slate-400 text-sm"></i>
+          <input type="range" id="hostVolume" min="0" max="1" step="0.05" value="1" oninput="changeVolume(this.value)" class="w-24 accent-blue-500 cursor-pointer">
+        </div>
+
+        <button onclick="revealAnswer()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-4 py-2 rounded-lg text-sm"><i class="fa-solid fa-bullhorn mr-1"></i> 揭曉答案</button>
+      </div>
+
+      <h4 class="text-sm font-bold mb-2 text-slate-300">選擇題庫曲目：</h4>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-48 overflow-y-auto" id="presetPlaylistContainer"></div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="bg-slate-900 p-4 rounded-xl border border-slate-700">
+        <h3 class="text-lg font-bold mb-3 text-slate-300">玩家即時答案審核</h3>
+        <div id="hostPlayerList" class="space-y-2 max-h-80 overflow-y-auto"></div>
+      </div>
+      <div class="bg-slate-900 p-4 rounded-xl border border-slate-700">
+        <h3 class="text-lg font-bold mb-3 text-slate-300">得分排行榜</h3>
+        <div id="hostLeaderboard" class="space-y-2 max-h-80 overflow-y-auto"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 玩家搶答介面 (多人) ================= -->
+  <div id="playerView" class="w-full max-w-md bg-slate-800 p-6 rounded-2xl border border-slate-700 hidden">
+    <div class="flex justify-between items-center mb-6">
+      <div>
+        <p class="text-xs text-slate-400">PLAYER</p>
+        <h2 id="playerNickDisplay" class="text-xl font-bold text-blue-400">--</h2>
+      </div>
+      <div class="text-right">
+        <p class="text-xs text-slate-400">目前得分</p>
+        <p id="playerScoreDisplay" class="text-2xl font-black text-yellow-400">0</p>
+      </div>
+    </div>
+
+    <div class="bg-slate-900 p-6 rounded-xl text-center border border-slate-700 mb-6 flex flex-col items-center">
+      <div class="audio-wave mb-3">
+        <div class="audio-bar"></div><div class="audio-bar"></div><div class="audio-bar"></div><div class="audio-bar"></div>
+      </div>
+      <p id="audioStatusText" class="text-slate-400 text-sm">等待主持人播放音樂...</p>
+    </div>
+
+    <div id="playerAnswerArea" class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium mb-1 text-slate-300">作答區</label>
+        <input type="text" id="answerInput" oninput="submitAnswer(this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:outline-none focus:border-blue-500" placeholder="等待主持人題目...">
+      </div>
+    </div>
+
+    <div id="revealModal" class="mt-6 p-4 bg-purple-900/40 border border-purple-500 rounded-xl text-center hidden">
+      <p class="text-xs text-purple-300 uppercase tracking-widest mb-1">Correct Answer</p>
+      <h3 id="revealedAnswerText" class="text-2xl font-black text-white">--</h3>
+    </div>
+  </div>
+
+  <!-- ================= 單人闖關介面 ================= -->
+  <div id="singlePlayerView" class="w-full max-w-lg bg-slate-800 p-6 rounded-2xl border border-slate-700 hidden">
+    <div class="flex justify-between items-center mb-4 border-b border-slate-700 pb-3">
+      <div>
+        <span id="spProgress" class="text-xs bg-blue-600 px-2.5 py-1 rounded-full text-white font-bold">第 1 題</span>
+        <span id="spBadge" class="ml-2 text-xs bg-amber-600 px-2.5 py-1 rounded-full text-white font-bold hidden">🔥 加分題 (+200分)</span>
+      </div>
+      <div class="text-right">
+        <span class="text-xs text-slate-400">總得分：</span>
+        <span id="spScore" class="text-xl font-black text-yellow-400">0</span>
+      </div>
+    </div>
+
+    <div class="bg-slate-900 p-4 rounded-xl text-center border border-slate-700 mb-6 flex flex-col items-center">
+      <div class="audio-wave mb-3">
+        <div class="audio-bar"></div><div class="audio-bar"></div><div class="audio-bar"></div><div class="audio-bar"></div>
+      </div>
+      <div class="flex flex-wrap justify-center gap-2 items-center mb-3">
+        <button onclick="spPlayMusic()" class="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg font-bold text-sm transition"><i class="fa-solid fa-play mr-1"></i> 播放</button>
+        <button onclick="audioPlayer.pause()" class="bg-yellow-600 hover:bg-yellow-500 text-white px-4 py-2 rounded-lg font-bold text-sm transition"><i class="fa-solid fa-pause mr-1"></i> 暫停</button>
+        <button onclick="audioRewind()" class="bg-slate-700 hover:bg-slate-600 text-white px-3 py-2 rounded-lg font-bold text-sm transition"><i class="fa-solid fa-backward-step mr-1"></i> -5秒</button>
+        <button onclick="audioForward()" class="bg-slate-700 hover:bg-slate-600 text-white px-3 py-2 rounded-lg font-bold text-sm transition"><i class="fa-solid fa-forward-step mr-1"></i> +5秒</button>
+      </div>
+      <div class="flex items-center gap-2 bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 w-full max-w-xs justify-center">
+        <i class="fa-solid fa-volume-high text-slate-400 text-sm"></i>
+        <input type="range" id="spVolume" min="0" max="1" step="0.05" value="1" oninput="changeVolume(this.value)" class="w-36 accent-emerald-500 cursor-pointer">
+      </div>
+    </div>
+
+    <div id="spQuestionArea" class="space-y-4"></div>
+    <div id="spFeedback" class="mt-4 p-3 rounded-lg text-center font-bold hidden"></div>
+
+    <button id="spNextBtn" onclick="spNextQuestion()" class="w-full mt-6 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition hidden">
+      下一題 <i class="fa-solid fa-arrow-right ml-1"></i>
+    </button>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT_ID.appspot.com",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    const multiplayerPlaylist = [
+      { id: 1, title: "Bury the Light (填空題)", answer: "惡魔獵人5", url: "https://drive.google.com/uc?export=download&id=1k64AoruJxlhZg8WeQZ6Rrtn8etfXsMRS", type: "input", points: 100 },
+      { id: 2, title: "League of Legends 積分對戰 (選擇題)", answer: "英雄聯盟", url: "https://drive.google.com/uc?export=download&id=1m43f39Eu9IFLz7EUkwmqmoVE8JbaPpgB", type: "choice", options: ["英雄聯盟", "Dota 2", "傳說對決", "暴雪英霸"], points: 100 },
+      { id: 3, title: "楓之谷 登入音樂 (是非題)", answer: "O", url: "https://drive.google.com/uc?export=download&id=1JHH2RX1XxFnrMf69VFxf6JO4jQjwe0SO", type: "boolean", points: 100 }
+    ];
+
+    const singleplayerPlaylist = [
+      { id: 1, title: "選出正確的遊戲名稱 (選擇題)", answer: "惡魔獵人5", url: "https://drive.google.com/uc?export=download&id=1k64AoruJxlhZg8WeQZ6Rrtn8etfXsMRS", type: "choice", options: ["惡魔獵人5", "戰神4", "惡靈古堡3", "魔兵驚天錄2"], points: 100 },
+      { id: 2, title: "選出正確的遊戲名稱 (選擇題)", answer: "英雄聯盟", url: "https://drive.google.com/uc?export=download&id=1m43f39Eu9IFLz7EUkwmqmoVE8JbaPpgB", type: "choice", options: ["絕地求生", "魔獸世界", "英雄聯盟", "俠盜獵車手"], points: 100 },
+      { id: 3, title: "楓之谷 登入音樂 (是非題)", answer: "O", url: "https://drive.google.com/uc?export=download&id=1JHH2RX1XxFnrMf69VFxf6JO4jQjwe0SO", type: "boolean", points: 100 },
+      { id: 4, title: "選出正確的遊戲名稱 (選擇題)", answer: "Apex英雄", url: "https://drive.google.com/uc?export=download&id=1bevCr4cFMQQgBjv1yUUXG-XnLQFWUi91", type: "choice", options: ["絕地求生", "Apex英雄", "鬥陣特攻", "特戰英豪"], points: 100 },
+      { id: 5, title: "選出正確的遊戲名稱 (選擇題)", answer: "CS Online", url: "https://drive.google.com/uc?export=download&id=1DRPTMoIs2r9RVI66EaD0mrZeJ6MROZwH", type: "choice", options: ["SF Online", "SA Online", "CS Online", "CF Online"], points: 100 },
+      { id: 6, title: "選出正確的遊戲名稱 (選擇題)", answer: "寶可夢 紅／藍", url: "https://drive.google.com/uc?export=download&id=1BFiNJ1mxytIxQlQFizsVl460bfZb0qqj", type: "choice", options: ["卡比之星 鏡之大迷宮", "寶可夢 紅／藍", "勇者鬥惡龍3", "薩爾達傳說 風之笛"], points: 100 },
+      { id: 7, title: "🔥 選出正確的遊戲名稱 (加分選擇題)", answer: "武林群俠傳", url: "https://drive.google.com/uc?export=download&id=1uFyiIK_F1UNflnxV8V_s1JRrypI2O397", type: "choice", options: ["古劍奇譚", "軒轅劍", "仙劍奇俠傳", "武林群俠傳"], points: 300 },
+      { id: 8, title: "🔥🔥 是否為RO仙境傳說的主題曲 (加分題！是非題)", answer: "X", url: "https://drive.google.com/uc?export=download&id=1dwUwu--ml_wJm-2_RKOW8kwdA23e49Mq", type: "boolean", points: 300 },
+      { id: 9, title: "選出正確的遊戲名稱 (選擇題)", answer: "超級瑪利歐", url: "https://drive.google.com/uc?export=download&id=11Giz09ZYWziGHXn-sV3XTBtn5VQrDW5c", type: "choice", options: ["星之卡比 夢之泉物語", "音速小子", "超級瑪利歐", "薩爾達傳說 織夢島"], points: 100 },
+      { id: 10, title: "選出正確的遊戲名稱 (選擇題)", answer: "俠盜獵車手：聖安地列斯", url: "https://drive.google.com/uc?export=download&id=1y9mLCdtEjBK3JMP4Yo2Aqag8cb6oTvAJ", type: "choice", options: ["俠盜獵車手", "俠盜獵車手：聖安地列斯", "俠盜獵車手V", "俠盜獵車手：罪惡都市"], points: 100 },
+      { id: 11, title: "選出正確的遊戲名稱 (選擇題)", answer: "俠盜獵車手V", url: "https://drive.google.com/uc?export=download&id=1Knwu96d0JiWX5iwwzqnSBScwOJ6GxXRg", type: "choice", options: ["俠盜獵車手：罪惡都市", "俠盜獵車手：聖安地列斯", "黑街聖徒", "俠盜獵車手V"], points: 100 },
+      { id: 12, title: "選出正確的遊戲名稱 (選擇題)", answer: "仙境傳說", url: "https://drive.google.com/uc?export=download&id=1-Zed3SA_2bwipMGK_5jx8rsBCEaZ0m4L", type: "choice", options: ["魔力寶貝", "仙境傳說", "天堂", "石器時代"], points: 100 },
+      { id: 13, title: "是否為卡比之星 鏡之大迷宮主題曲(是非題)", answer: "X", url: "https://drive.google.com/uc?export=download&id=15kk1P5VS40UCn9hJ2Otc2P4YaUkbBbNO", type: "boolean", points: 100 },
+      { id: 14, title: "選出正確的遊戲名稱 (選擇題)", answer: "三國無雙2", url: "https://drive.google.com/uc?export=download&id=1y_UmaK40zUhYMQcQhd32rVHiCunRIJbA", type: "choice", options: ["三國無雙2", "快打旋風5", "潛龍碟影:再復仇", "惡魔獵人5"], points: 100 },
+      { id: 15, title: "選出正確的遊戲名稱 (選擇題)", answer: "紅色警戒3", url: "https://drive.google.com/uc?export=download&id=1OySMSiPT3yJBMqwID3m7k38qn3XfdrYw", type: "choice", options: ["英雄連隊3", "紅色警戒3", "世紀帝國3", "鋼鐵之心4"], points: 100 },
+      { id: 16, title: "選出正確的遊戲名稱 (送分選擇題)", answer: "俄羅斯方塊", url: "https://drive.google.com/uc?export=download&id=1pf9NaTYDMSZlOIQSRHcDkBTThK61dXiv", type: "choice", options: ["貪食蛇", "魔法氣泡2", "俄羅斯方塊", "皮卡丘打排球"], points: 50 },
+      { id: 17, title: "是否為 爆爆王 主畫面音樂 (是非題)", answer: "X", url: "https://drive.google.com/uc?export=download&id=1XpvimJvLv4pEa36uDwXBCJt2fd6UlKli", type: "boolean", points: 100 },
+      { id: 18, title: "選出正確的遊戲名稱 (選擇題)", answer: "神魔之塔", url: "https://drive.google.com/uc?export=download&id=12IS0suM2sSmVS9uz2ms5Pqi8ViwNEpxV", type: "choice", options: ["龍族拼圖", "神魔之塔", "怪物彈珠", "爐石戰記"], points: 100 },
+      { id: 19, title: "選出正確的遊戲名稱 (選擇題)", answer: "艾爾登法環", url: "https://drive.google.com/uc?export=download&id=18crX_iqmEOdNLFBcxEqFHXgBz0R7XVro", type: "choice", options: ["黑神話悟空", "艾爾登法環", "黑暗靈魂3", "隻狼"], points: 200 },
+      { id: 20, title: "🔥 選出正確的遊戲名稱 (加分選擇題)", answer: "NBA 2K12", url: "https://drive.google.com/uc?export=download&id=17Pf38scKLP_As4DfwiR9rkuO1972xTO_", type: "choice", options: ["Freestyle Street Basketball", "Football Manager 2014", "NBA 2K12", "皮卡丘打排球"], points: 200 },
+      { id: 21, title: "選出正確的遊戲名稱 (選擇題)", answer: "星露谷物語", url: "https://drive.google.com/uc?export=download&id=1fLBq1rzHClDNwK72h2ROkSt-TGImqhKM", type: "choice", options: ["泰拉瑞亞", "Minecraft", "Don't Starve Together", "星露谷物語"], points: 100 },
+      { id: 22, title: "選出正確的遊戲名稱 (選擇題)", answer: "三國殺", url: "https://drive.google.com/uc?export=download&id=16R7KL7Lu5Cj9-r8CNtXcoXqCHUq3jyXm", type: "choice", options: ["三國殺", "仙劍奇俠傳", "金庸群俠傳", "天龍八部 Online"], points: 100 },
+      { id: 23, title: "選出正確的遊戲名稱 (選擇題)", answer: "世紀帝國2", url: "https://drive.google.com/uc?export=download&id=1qXVzbuviEQhv-nqykPDJCLQzH01tXRaJ", type: "choice", options: ["文明帝國4", "世紀帝國2", "紅色緊戒2", "全面戰爭:三國"], points: 100 },
+      { id: 24, title: "是否為 上古卷軸4 主畫面歌曲 (是非題)", answer: "O", url: "https://drive.google.com/uc?export=download&id=1VR5Ipv8zWUXoCF5Yce89I-nMyqHu2xZT", type: "boolean", points: 100 },
+      { id: 25, title: "選出正確的遊戲名稱 (選擇題)", answer: "任天堂明星大亂鬥", url: "https://drive.google.com/uc?export=download&id=1NM-5cWb-650TRjjLipj1s5xIIhKPXGOV", type: "choice", options: ["貓咪大戰爭", "節奏天國", "任天堂明星大亂鬥", "糖豆人"], points: 100 },
+      { id: 26, title: "選出正確的遊戲名稱 (選擇題)", answer: "Minecraft", url: "https://drive.google.com/uc?export=download&id=1iQmE7PlKxF1T0ipCJxExRxorZ60iyO-u", type: "choice", options: ["瑪奇Mabinogi", "泰拉瑞亞", "Minecraft", "楓之谷"], points: 100 },
+      { id: 27, title: "選出正確的遊戲名稱 (選擇題)", answer: "貓咪大戰爭", url: "https://drive.google.com/uc?export=download&id=1YGK2HWRdMT9nk4gCyx0ahu_LA6Bm6fyk", type: "choice", options: ["爆爆王", "跑跑卡丁車", "彈彈堂", "貓咪大戰爭"], points: 200 },
+      { id: 28, title: "選出正確的遊戲名稱 (選擇題)", answer: "最後一戰", url: "https://drive.google.com/uc?export=download&id=10z8D14TlmizG9hzEcdTXdMHe4NIuQ6TF", type: "choice", options: ["泰坦殞落2", "最後一戰", "星海爭霸2", "流亡黯道"], points: 100 },
+      { id: 29, title: "選出正確的遊戲名稱 (選擇題)", answer: "爆爆王", url: "https://drive.google.com/uc?export=download&id=1vczQNbSMdZgrIbndjwgJy66xIGZZvNaO", type: "choice", options: ["賽爾號", "爆爆王", "彈彈堂", "糖豆人"], points: 200 },
+      { id: 30, title: "Terraria Soundtrack (是非題)", answer: "O", url: "https://drive.google.com/uc?export=download&id=10o5yaES3YdQrL3nKNplNlPrb8im2HVR6", type: "boolean", points: 100 },
+      { id: 31, title: "選出正確的遊戲名稱 (選擇題)", answer: "鬥陣特攻", url: "https://drive.google.com/uc?export=download&id=15B4wigtfakfihry_plZPc3efakDH9uYn", type: "choice", options: ["電馭叛客2077", "APEX", "鬥陣特攻", "絕地戰兵2"], points: 100 },
+      { id: 32, title: "選出正確的遊戲名稱 (選擇題)", answer: "巫師3：狂獵", url: "https://drive.google.com/uc?export=download&id=1IZ7mxKpz7W3uf9uVzc02POfnTCASHT--", type: "choice", options: ["巫師3：狂獵", "闇龍紀元2", "柏德之門3", "看門狗2"], points: 100 },
+      { id: 33, title: "選出正確的遊戲名稱 (選擇題)", answer: "魔物獵人世界：冰原", url: "https://drive.google.com/uc?export=download&id=1l_guJqtmWL2eLAgk3zbT4Jhf2ElvFf-Z", type: "choice", options: ["魔物獵人3", "魔物獵人世界：冰原", "魔物獵人荒野", "魔物獵人崛起"], points: 200 }
+    ];
+
+    let currentRoomCode = "";
+    let myRole = ""; 
+    let myNickname = "";
+    let selectedTrack = null;
+    const audioPlayer = document.getElementById("globalAudio");
+
+    let spIndex = 0;
+    let spTotalScore = 0;
+
+    function changeVolume(val) {
+      if (audioPlayer) {
+        audioPlayer.volume = val;
+      }
+      const hostVol = document.getElementById("hostVolume");
+      const spVol = document.getElementById("spVolume");
+      if (hostVol) hostVol.value = val;
+      if (spVol) spVol.value = val;
+    }
+
+    function playEffect(type) {
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        osc.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        const now = audioCtx.currentTime;
+
+        if (type === 'correct') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(523.25, now);
+          osc.frequency.setValueAtTime(659.25, now + 0.1);
+          osc.frequency.setValueAtTime(783.99, now + 0.2);
+          gainNode.gain.setValueAtTime(0.3, now);
+          gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+          osc.start(now);
+          osc.stop(now + 0.4);
+        } else if (type === 'wrong') {
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(200, now);
+          osc.frequency.setValueAtTime(150, now + 0.15);
+          gainNode.gain.setValueAtTime(0.3, now);
+          gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+          osc.start(now);
+          osc.stop(now + 0.35);
+        }
+      } catch (e) {}
+    }
+
+    function audioForward() {
+      if (audioPlayer) {
+        audioPlayer.currentTime = Math.min(audioPlayer.duration || 0, audioPlayer.currentTime + 5);
+      }
+    }
+
+    function audioRewind() {
+      if (audioPlayer) {
+        audioPlayer.currentTime = Math.max(0, audioPlayer.currentTime - 5);
+      }
+    }
+
+    window.onload = function() {
+      const container = document.getElementById("presetPlaylistContainer");
+      if (container) {
+        container.innerHTML = "";
+        multiplayerPlaylist.forEach((track, index) => {
+          container.innerHTML += `
+            <div onclick="selectTrack(${index}, this)" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 p-3 rounded-lg cursor-pointer transition flex justify-between items-center">
+              <div>
+                <p class="font-bold text-sm text-white">${track.title} ${track.points > 100 ? '🔥 (+'+track.points+')' : ''}</p>
+                <p class="text-xs text-slate-400">答案: ${track.answer} | 類型: ${track.type}</p>
+              </div>
+              <span class="text-xs bg-blue-600 px-2 py-1 rounded text-white">選擇</span>
+            </div>
+          `;
+        });
+      }
+    };
+
+    function selectTrack(index, element) {
+      selectedTrack = multiplayerPlaylist[index];
+      document.querySelectorAll('#presetPlaylistContainer > div').forEach(el => el.classList.remove('border-blue-500', 'bg-slate-700'));
+      element.classList.add('border-blue-500', 'bg-slate-700');
+    }
+
+    function unlockAudio() {
+      audioPlayer.play().then(() => {
+        audioPlayer.pause();
+        document.getElementById("audioUnlockModal").classList.add("hidden");
+      }).catch(e => {
+        document.getElementById("audioUnlockModal").classList.add("hidden");
+      });
+    }
+
+    async function createRoom() {
+      myNickname = document.getElementById("nicknameInput").value || "主持人";
+      currentRoomCode = Math.floor(100000 + Math.random() * 900000).toString();
+      myRole = "host";
+
+      await db.collection("rooms").doc(currentRoomCode).set({
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        audioState: { status: "stopped", url: "" },
+        currentQuestion: null,
+        revealedAnswer: ""
+      });
+
+      document.getElementById("setupView").classList.add("hidden");
+      document.getElementById("hostView").classList.remove("hidden");
+      document.getElementById("hostRoomDisplay").innerText = currentRoomCode;
+      listenRoomData();
+    }
+
+    async function joinRoom() {
+      myNickname = document.getElementById("nicknameInput").value;
+      currentRoomCode = document.getElementById("roomCodeInput").value.trim();
+      myRole = "player";
+
+      if (!myNickname || !currentRoomCode) return alert("請輸入暱稱與房號");
+
+      const roomRef = db.collection("rooms").doc(currentRoomCode);
+      const doc = await roomRef.get();
+      if (!doc.exists()) return alert("找不到該房間！");
+
+      document.getElementById("audioUnlockModal").classList.remove("hidden");
+      await roomRef.collection("players").doc(myNickname).set({ score: 0, currentAnswer: "" });
+
+      document.getElementById("setupView").classList.add("hidden");
+      document.getElementById("playerView").classList.remove("hidden");
+      document.getElementById("playerNickDisplay").innerText = myNickname;
+      listenRoomData();
+    }
+
+    function listenRoomData() {
+      const roomRef = db.collection("rooms").doc(currentRoomCode);
+      let lastQId = null;
+
+      roomRef.onSnapshot(doc => {
+        const data = doc.data();
+        if (!data) return;
+
+        if (data.audioState) {
+          if (data.audioState.url && audioPlayer.src !== data.audioState.url) {
+            audioPlayer.src = data.audioState.url;
+          }
+          if (data.audioState.status === "play") {
+            audioPlayer.play().catch(() => {});
+            if(myRole === 'player') document.getElementById("audioStatusText").innerText = "🎵 音樂播放中，請作答！";
+          } else {
+            audioPlayer.pause();
+            if(myRole === 'player') document.getElementById("audioStatusText").innerText = "⏸️ 音樂已暫停";
+          }
+        }
+
+        if (myRole === 'player' && data.currentQuestion) {
+          if (lastQId !== data.currentQuestion.id) {
+            lastQId = data.currentQuestion.id;
+            renderPlayerQuestionArea(data.currentQuestion);
+          }
+        }
+
+        if (data.revealedAnswer) {
+          document.getElementById("revealModal").classList.remove("hidden");
+          document.getElementById("revealedAnswerText").innerText = data.revealedAnswer;
+        } else {
+          document.getElementById("revealModal").classList.add("hidden");
+        }
+      });
+
+      roomRef.collection("players").onSnapshot(snapshot => {
+        const players = [];
+        snapshot.forEach(p => players.push({ id: p.id, ...p.data() }));
+
+        if (myRole === "host") {
+          document.getElementById("playerCount").innerText = `在線人數: ${players.length}`;
+          renderHostControls(players);
+        } else {
+          const me = players.find(p => p.id === myNickname);
+          if (me) document.getElementById("playerScoreDisplay").innerText = me.score;
+        }
+      });
+    }
+
+    function renderPlayerQuestionArea(q) {
+      const area = document.getElementById("playerAnswerArea");
+      area.innerHTML = `<p class="font-bold text-sm text-blue-300 mb-2">${q.title}</p>`;
+
+      if (q.type === "choice") {
+        let html = '<div class="space-y-2">';
+        q.options.forEach(opt => {
+          html += `<button onclick="submitAnswer('${opt}', this)" class="player-opt-btn w-full bg-slate-900 hover:bg-slate-700 border border-slate-700 text-left p-3 rounded-lg text-white font-bold transition">${opt}</button>`;
+        });
+        html += '</div>';
+        area.innerHTML += html;
+      } else if (q.type === "boolean") {
+        area.innerHTML += `
+          <div class="grid grid-cols-2 gap-3">
+            <button onclick="submitAnswer('O', this)" class="player-opt-btn bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl text-xl">O (是)</button>
+            <button onclick="submitAnswer('X', this)" class="player-opt-btn bg-rose-600 hover:bg-rose-500 text-white font-bold py-3 rounded-xl text-xl">X (否)</button>
+          </div>
+        `;
+      } else {
+        area.innerHTML += `
+          <input type="text" id="answerInput" oninput="submitAnswer(this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:outline-none focus:border-blue-500" placeholder="請打字輸入遊戲名稱...">
+        `;
+      }
+    }
+
+    function renderHostControls(players) {
+      const listEl = document.getElementById("hostPlayerList");
+      const boardEl = document.getElementById("hostLeaderboard");
+      listEl.innerHTML = "";
+      boardEl.innerHTML = "";
+
+      const currentPts = selectedTrack ? selectedTrack.points : 100;
+
+      players.forEach(p => {
+        listEl.innerHTML += `
+          <div class="flex justify-between items-center bg-slate-800 p-2.5 rounded border border-slate-700">
+            <div>
+              <span class="font-bold text-sm text-blue-300">${p.id}</span>
+              <p class="text-xs text-white font-medium mt-0.5">${p.currentAnswer || '(尚未作答)'}</p>
+            </div>
+            <div class="flex gap-1">
+              <button onclick="addScore('${p.id}', 100)" class="bg-green-600 hover:bg-green-500 text-xs px-2 py-1 rounded">+100</button>
+              <button onclick="addScore('${p.id}', ${currentPts})" class="bg-amber-600 hover:bg-amber-500 text-xs px-2 py-1 rounded">+${currentPts}</button>
+            </div>
+          </div>
+        `;
+        boardEl.innerHTML += `
+          <div class="flex justify-between items-center bg-slate-800 p-2 rounded">
+            <span class="text-sm">${p.id}</span>
+            <span class="font-bold text-yellow-400">${p.score} 分</span>
+          </div>
+        `;
+      });
+    }
+
+    function broadcastAudio(status) {
+      if (status === 'play' && !selectedTrack) return alert("請先從題庫點選一首歌！");
+      
+      db.collection("rooms").doc(currentRoomCode).update({
+        "audioState.status": status,
+        "audioState.url": selectedTrack.url,
+        currentQuestion: selectedTrack,
+        revealedAnswer: "" 
+      });
+    }
+
+    function addScore(playerNick, points) {
+      playEffect('correct');
+      const ref = db.collection("rooms").doc(currentRoomCode).collection("players").doc(playerNick);
+      ref.update({ score: firebase.firestore.FieldValue.increment(points) });
+    }
+
+    function revealAnswer() {
+      const ans = selectedTrack ? selectedTrack.answer : prompt("請輸入要揭曉的答案：");
+      if (ans) db.collection("rooms").doc(currentRoomCode).update({ revealedAnswer: ans });
+    }
+
+    function submitAnswer(text, btnElement = null) {
+      if (btnElement) {
+        document.querySelectorAll('.player-opt-btn').forEach(b => b.classList.remove('ring-2', 'ring-blue-500', 'bg-blue-600'));
+        btnElement.classList.add('ring-2', 'ring-blue-500', 'bg-blue-600');
+      }
+      db.collection("rooms").doc(currentRoomCode).collection("players").doc(myNickname).update({ currentAnswer: text });
+    }
+
+    function startSinglePlayer() {
+      document.getElementById("audioUnlockModal").classList.remove("hidden");
+      document.getElementById("setupView").classList.add("hidden");
+      document.getElementById("singlePlayerView").classList.remove("hidden");
+      spIndex = 0;
+      spTotalScore = 0;
+      loadSpQuestion();
+    }
+
+    function loadSpQuestion() {
+      if (spIndex >= singleplayerPlaylist.length) {
+        playEffect('correct');
+        document.getElementById("singlePlayerView").innerHTML = `
+          <div class="text-center py-8">
+            <h2 class="text-3xl font-black text-yellow-400 mb-3">🎉 通關完成！</h2>
+            <p class="text-lg text-slate-300 mb-6">總得分：<span class="text-2xl font-bold text-white">${spTotalScore} 分</span></p>
+            <button onclick="location.reload()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-6 py-3 rounded-xl">回到主選單</button>
+          </div>
+        `;
+        return;
+      }
+
+      const q = singleplayerPlaylist[spIndex];
+      audioPlayer.src = q.url;
+
+      document.getElementById("spProgress").innerText = `第 ${spIndex + 1} 題 / 共 ${singleplayerPlaylist.length} 題`;
+      document.getElementById("spScore").innerText = spTotalScore;
+      
+      const badge = document.getElementById("spBadge");
+      if (q.points > 100) {
+        badge.innerText = `🔥 加分題 (+${q.points}分)`;
+        badge.classList.remove("hidden");
+      } else {
+        badge.classList.add("hidden");
+      }
+
+      document.getElementById("spFeedback").classList.add("hidden");
+      document.getElementById("spNextBtn").classList.add("hidden");
+
+      const area = document.getElementById("spQuestionArea");
+      area.innerHTML = `<p class="font-bold text-lg text-white mb-2">${q.title}</p>`;
+
+      if (q.type === "choice") {
+        let btnHtml = '<div class="space-y-2">';
+        q.options.forEach(opt => {
+          btnHtml += `<button onclick="checkSpAnswer('${q.answer}', ${q.points}, '${opt}')" class="w-full bg-slate-900 hover:bg-slate-700 border border-slate-700 text-left p-3.5 rounded-xl text-white font-bold transition">${opt}</button>`;
+        });
+        btnHtml += '</div>';
+        area.innerHTML += btnHtml;
+      } else if (q.type === "boolean") {
+        area.innerHTML += `
+          <div class="grid grid-cols-2 gap-4 mt-2">
+            <button onclick="checkSpAnswer('${q.answer}', ${q.points}, 'O')" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 rounded-xl text-2xl">O (是)</button>
+            <button onclick="checkSpAnswer('${q.answer}', ${q.points}, 'X')" class="bg-rose-600 hover:bg-rose-500 text-white font-bold py-4 rounded-xl text-2xl">X (否)</button>
+          </div>
+        `;
+      }
+    }
+
+    function spPlayMusic() {
+      audioPlayer.play().catch(() => {});
+    }
+
+    function checkSpAnswer(correctAnswer, points, userChoice) {
+      audioPlayer.pause();
+      const fb = document.getElementById("spFeedback");
+      fb.classList.remove("hidden");
+
+      if (userChoice === correctAnswer) {
+        spTotalScore += points;
+        playEffect('correct');
+        fb.className = "mt-4 p-3 rounded-lg text-center font-bold bg-green-900/50 text-green-300 border border-green-500";
+        fb.innerText = `✨ 答對了！獲得 ${points} 分！`;
+      } else {
+        playEffect('wrong');
+        fb.className = "mt-4 p-3 rounded-lg text-center font-bold bg-red-900/50 text-red-300 border border-red-500";
+        fb.innerText = `❌ 答錯囉！正確答案是：${correctAnswer}`;
+      }
+
+      document.getElementById("spScore").innerText = spTotalScore;
+      document.getElementById("spNextBtn").classList.remove("hidden");
+    }
+
+    function spNextQuestion() {
+      spIndex++;
+      loadSpQuestion();
+    }
+  </script>
+</body>
+</html>
