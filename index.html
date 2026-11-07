@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Game BGM 猜歌遊戲 - Google 雲端硬碟版</title>
+  <title>Game BGM 猜歌遊戲 - 本地音樂版</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <!-- Firebase SDKs -->
@@ -194,45 +194,45 @@
     const db = firebase.firestore();
 
     const multiplayerPlaylist = [
-      { id: 1, title: "Bury the Light (填空題)", answer: "惡魔獵人5", url: "https://drive.google.com/uc?export=download&id=1k64AoruJxlhZg8WeQZ6Rrtn8etfXsMRS", type: "input", points: 100 },
-      { id: 2, title: "League of Legends 積分對戰 (選擇題)", answer: "英雄聯盟", url: "https://drive.google.com/uc?export=download&id=1m43f39Eu9IFLz7EUkwmqmoVE8JbaPpgB", type: "choice", options: ["英雄聯盟", "Dota 2", "傳說對決", "暴雪英霸"], points: 100 },
-      { id: 3, title: "楓之谷 登入音樂 (是非題)", answer: "O", url: "https://drive.google.com/uc?export=download&id=1JHH2RX1XxFnrMf69VFxf6JO4jQjwe0SO", type: "boolean", points: 100 }
+      { id: 1, title: "Bury the Light (填空題)", answer: "惡魔獵人5", url: "./music/Bury the Light.mp3", type: "input", points: 100 },
+      { id: 2, title: "League of Legends 積分對戰 (選擇題)", answer: "英雄聯盟", url: "./music/League of Legends 積分對戰(選角) BGM.mp3", type: "choice", options: ["英雄聯盟", "Dota 2", "傳說對決", "暴雪英霸"], points: 100 },
+      { id: 3, title: "楓之谷 登入音樂 (是非題)", answer: "O", url: "./music/楓之谷 登入音樂.mp3", type: "boolean", points: 100 }
     ];
 
     const singleplayerPlaylist = [
-      { id: 1, title: "選出正確的遊戲名稱 (選擇題)", answer: "惡魔獵人5", url: "https://drive.google.com/uc?export=download&id=1k64AoruJxlhZg8WeQZ6Rrtn8etfXsMRS", type: "choice", options: ["惡魔獵人5", "戰神4", "惡靈古堡3", "魔兵驚天錄2"], points: 100 },
-      { id: 2, title: "選出正確的遊戲名稱 (選擇題)", answer: "英雄聯盟", url: "https://drive.google.com/uc?export=download&id=1m43f39Eu9IFLz7EUkwmqmoVE8JbaPpgB", type: "choice", options: ["絕地求生", "魔獸世界", "英雄聯盟", "俠盜獵車手"], points: 100 },
-      { id: 3, title: "楓之谷 登入音樂 (是非題)", answer: "O", url: "https://drive.google.com/uc?export=download&id=1JHH2RX1XxFnrMf69VFxf6JO4jQjwe0SO", type: "boolean", points: 100 },
-      { id: 4, title: "選出正確的遊戲名稱 (選擇題)", answer: "Apex英雄", url: "https://drive.google.com/uc?export=download&id=1bevCr4cFMQQgBjv1yUUXG-XnLQFWUi91", type: "choice", options: ["絕地求生", "Apex英雄", "鬥陣特攻", "特戰英豪"], points: 100 },
-      { id: 5, title: "選出正確的遊戲名稱 (選擇題)", answer: "CS Online", url: "https://drive.google.com/uc?export=download&id=1DRPTMoIs2r9RVI66EaD0mrZeJ6MROZwH", type: "choice", options: ["SF Online", "SA Online", "CS Online", "CF Online"], points: 100 },
-      { id: 6, title: "選出正確的遊戲名稱 (選擇題)", answer: "寶可夢 紅／藍", url: "https://drive.google.com/uc?export=download&id=1BFiNJ1mxytIxQlQFizsVl460bfZb0qqj", type: "choice", options: ["卡比之星 鏡之大迷宮", "寶可夢 紅／藍", "勇者鬥惡龍3", "薩爾達傳說 風之笛"], points: 100 },
-      { id: 7, title: "🔥 選出正確的遊戲名稱 (加分選擇題)", answer: "武林群俠傳", url: "https://drive.google.com/uc?export=download&id=1uFyiIK_F1UNflnxV8V_s1JRrypI2O397", type: "choice", options: ["古劍奇譚", "軒轅劍", "仙劍奇俠傳", "武林群俠傳"], points: 300 },
-      { id: 8, title: "🔥🔥 是否為RO仙境傳說的主題曲 (加分題！是非題)", answer: "X", url: "https://drive.google.com/uc?export=download&id=1dwUwu--ml_wJm-2_RKOW8kwdA23e49Mq", type: "boolean", points: 300 },
-      { id: 9, title: "選出正確的遊戲名稱 (選擇題)", answer: "超級瑪利歐", url: "https://drive.google.com/uc?export=download&id=11Giz09ZYWziGHXn-sV3XTBtn5VQrDW5c", type: "choice", options: ["星之卡比 夢之泉物語", "音速小子", "超級瑪利歐", "薩爾達傳說 織夢島"], points: 100 },
-      { id: 10, title: "選出正確的遊戲名稱 (選擇題)", answer: "俠盜獵車手：聖安地列斯", url: "https://drive.google.com/uc?export=download&id=1y9mLCdtEjBK3JMP4Yo2Aqag8cb6oTvAJ", type: "choice", options: ["俠盜獵車手", "俠盜獵車手：聖安地列斯", "俠盜獵車手V", "俠盜獵車手：罪惡都市"], points: 100 },
-      { id: 11, title: "選出正確的遊戲名稱 (選擇題)", answer: "俠盜獵車手V", url: "https://drive.google.com/uc?export=download&id=1Knwu96d0JiWX5iwwzqnSBScwOJ6GxXRg", type: "choice", options: ["俠盜獵車手：罪惡都市", "俠盜獵車手：聖安地列斯", "黑街聖徒", "俠盜獵車手V"], points: 100 },
-      { id: 12, title: "選出正確的遊戲名稱 (選擇題)", answer: "仙境傳說", url: "https://drive.google.com/uc?export=download&id=1-Zed3SA_2bwipMGK_5jx8rsBCEaZ0m4L", type: "choice", options: ["魔力寶貝", "仙境傳說", "天堂", "石器時代"], points: 100 },
-      { id: 13, title: "是否為卡比之星 鏡之大迷宮主題曲(是非題)", answer: "X", url: "https://drive.google.com/uc?export=download&id=15kk1P5VS40UCn9hJ2Otc2P4YaUkbBbNO", type: "boolean", points: 100 },
-      { id: 14, title: "選出正確的遊戲名稱 (選擇題)", answer: "三國無雙2", url: "https://drive.google.com/uc?export=download&id=1y_UmaK40zUhYMQcQhd32rVHiCunRIJbA", type: "choice", options: ["三國無雙2", "快打旋風5", "潛龍碟影:再復仇", "惡魔獵人5"], points: 100 },
-      { id: 15, title: "選出正確的遊戲名稱 (選擇題)", answer: "紅色警戒3", url: "https://drive.google.com/uc?export=download&id=1OySMSiPT3yJBMqwID3m7k38qn3XfdrYw", type: "choice", options: ["英雄連隊3", "紅色警戒3", "世紀帝國3", "鋼鐵之心4"], points: 100 },
-      { id: 16, title: "選出正確的遊戲名稱 (送分選擇題)", answer: "俄羅斯方塊", url: "https://drive.google.com/uc?export=download&id=1pf9NaTYDMSZlOIQSRHcDkBTThK61dXiv", type: "choice", options: ["貪食蛇", "魔法氣泡2", "俄羅斯方塊", "皮卡丘打排球"], points: 50 },
-      { id: 17, title: "是否為 爆爆王 主畫面音樂 (是非題)", answer: "X", url: "https://drive.google.com/uc?export=download&id=1XpvimJvLv4pEa36uDwXBCJt2fd6UlKli", type: "boolean", points: 100 },
-      { id: 18, title: "選出正確的遊戲名稱 (選擇題)", answer: "神魔之塔", url: "https://drive.google.com/uc?export=download&id=12IS0suM2sSmVS9uz2ms5Pqi8ViwNEpxV", type: "choice", options: ["龍族拼圖", "神魔之塔", "怪物彈珠", "爐石戰記"], points: 100 },
-      { id: 19, title: "選出正確的遊戲名稱 (選擇題)", answer: "艾爾登法環", url: "https://drive.google.com/uc?export=download&id=18crX_iqmEOdNLFBcxEqFHXgBz0R7XVro", type: "choice", options: ["黑神話悟空", "艾爾登法環", "黑暗靈魂3", "隻狼"], points: 200 },
-      { id: 20, title: "🔥 選出正確的遊戲名稱 (加分選擇題)", answer: "NBA 2K12", url: "https://drive.google.com/uc?export=download&id=17Pf38scKLP_As4DfwiR9rkuO1972xTO_", type: "choice", options: ["Freestyle Street Basketball", "Football Manager 2014", "NBA 2K12", "皮卡丘打排球"], points: 200 },
-      { id: 21, title: "選出正確的遊戲名稱 (選擇題)", answer: "星露谷物語", url: "https://drive.google.com/uc?export=download&id=1fLBq1rzHClDNwK72h2ROkSt-TGImqhKM", type: "choice", options: ["泰拉瑞亞", "Minecraft", "Don't Starve Together", "星露谷物語"], points: 100 },
-      { id: 22, title: "選出正確的遊戲名稱 (選擇題)", answer: "三國殺", url: "https://drive.google.com/uc?export=download&id=16R7KL7Lu5Cj9-r8CNtXcoXqCHUq3jyXm", type: "choice", options: ["三國殺", "仙劍奇俠傳", "金庸群俠傳", "天龍八部 Online"], points: 100 },
-      { id: 23, title: "選出正確的遊戲名稱 (選擇題)", answer: "世紀帝國2", url: "https://drive.google.com/uc?export=download&id=1qXVzbuviEQhv-nqykPDJCLQzH01tXRaJ", type: "choice", options: ["文明帝國4", "世紀帝國2", "紅色緊戒2", "全面戰爭:三國"], points: 100 },
-      { id: 24, title: "是否為 上古卷軸4 主畫面歌曲 (是非題)", answer: "O", url: "https://drive.google.com/uc?export=download&id=1VR5Ipv8zWUXoCF5Yce89I-nMyqHu2xZT", type: "boolean", points: 100 },
-      { id: 25, title: "選出正確的遊戲名稱 (選擇題)", answer: "任天堂明星大亂鬥", url: "https://drive.google.com/uc?export=download&id=1NM-5cWb-650TRjjLipj1s5xIIhKPXGOV", type: "choice", options: ["貓咪大戰爭", "節奏天國", "任天堂明星大亂鬥", "糖豆人"], points: 100 },
-      { id: 26, title: "選出正確的遊戲名稱 (選擇題)", answer: "Minecraft", url: "https://drive.google.com/uc?export=download&id=1iQmE7PlKxF1T0ipCJxExRxorZ60iyO-u", type: "choice", options: ["瑪奇Mabinogi", "泰拉瑞亞", "Minecraft", "楓之谷"], points: 100 },
-      { id: 27, title: "選出正確的遊戲名稱 (選擇題)", answer: "貓咪大戰爭", url: "https://drive.google.com/uc?export=download&id=1YGK2HWRdMT9nk4gCyx0ahu_LA6Bm6fyk", type: "choice", options: ["爆爆王", "跑跑卡丁車", "彈彈堂", "貓咪大戰爭"], points: 200 },
-      { id: 28, title: "選出正確的遊戲名稱 (選擇題)", answer: "最後一戰", url: "https://drive.google.com/uc?export=download&id=10z8D14TlmizG9hzEcdTXdMHe4NIuQ6TF", type: "choice", options: ["泰坦殞落2", "最後一戰", "星海爭霸2", "流亡黯道"], points: 100 },
-      { id: 29, title: "選出正確的遊戲名稱 (選擇題)", answer: "爆爆王", url: "https://drive.google.com/uc?export=download&id=1vczQNbSMdZgrIbndjwgJy66xIGZZvNaO", type: "choice", options: ["賽爾號", "爆爆王", "彈彈堂", "糖豆人"], points: 200 },
-      { id: 30, title: "Terraria Soundtrack (是非題)", answer: "O", url: "https://drive.google.com/uc?export=download&id=10o5yaES3YdQrL3nKNplNlPrb8im2HVR6", type: "boolean", points: 100 },
-      { id: 31, title: "選出正確的遊戲名稱 (選擇題)", answer: "鬥陣特攻", url: "https://drive.google.com/uc?export=download&id=15B4wigtfakfihry_plZPc3efakDH9uYn", type: "choice", options: ["電馭叛客2077", "APEX", "鬥陣特攻", "絕地戰兵2"], points: 100 },
-      { id: 32, title: "選出正確的遊戲名稱 (選擇題)", answer: "巫師3：狂獵", url: "https://drive.google.com/uc?export=download&id=1IZ7mxKpz7W3uf9uVzc02POfnTCASHT--", type: "choice", options: ["巫師3：狂獵", "闇龍紀元2", "柏德之門3", "看門狗2"], points: 100 },
-      { id: 33, title: "選出正確的遊戲名稱 (選擇題)", answer: "魔物獵人世界：冰原", url: "https://drive.google.com/uc?export=download&id=1l_guJqtmWL2eLAgk3zbT4Jhf2ElvFf-Z", type: "choice", options: ["魔物獵人3", "魔物獵人世界：冰原", "魔物獵人荒野", "魔物獵人崛起"], points: 200 }
+      { id: 1, title: "選出正確的遊戲名稱 (選擇題)", answer: "惡魔獵人5", url: "./music/Bury the Light.mp3", type: "choice", options: ["惡魔獵人5", "戰神4", "惡靈古堡3", "魔兵驚天錄2"], points: 100 },
+      { id: 2, title: "選出正確的遊戲名稱 (選擇題)", answer: "英雄聯盟", url: "./music/League of Legends 積分對戰(選角) BGM.mp3", type: "choice", options: ["絕地求生", "魔獸世界", "英雄聯盟", "俠盜獵車手"], points: 100 },
+      { id: 3, title: "楓之谷 登入音樂 (是非題)", answer: "O", url: "./music/楓之谷 登入音樂.mp3", type: "boolean", points: 100 },
+      { id: 4, title: "選出正確的遊戲名稱 (選擇題)", answer: "Apex英雄", url: "./music/Apex Legends OST (Main Theme).mp3", type: "choice", options: ["絕地求生", "Apex英雄", "鬥陣特攻", "特戰英豪"], points: 100 },
+      { id: 5, title: "選出正確的遊戲名稱 (選擇題)", answer: "CS Online", url: "./music/[♪CSO] Lobby Theme - The Beginning of The War.mp3", type: "choice", options: ["SF Online", "SA Online", "CS Online", "CF Online"], points: 100 },
+      { id: 6, title: "選出正確的遊戲名稱 (選擇題)", answer: "寶可夢 紅／藍", url: "./music/Pokemon Red Blue Opening.mp3", type: "choice", options: ["卡比之星 鏡之大迷宮", "寶可夢 紅／藍", "勇者鬥惡龍3", "薩爾達傳說 風之笛"], points: 100 },
+      { id: 7, title: "🔥 選出正確的遊戲名稱 (加分選擇題)", answer: "武林群俠傳", url: "./music/經典配樂《鑄劍山莊》原作：蔡志展.mp3", type: "choice", options: ["古劍奇譚", "軒轅劍", "仙劍奇俠傳", "武林群俠傳"], points: 300 },
+      { id: 8, title: "🔥🔥 是否為RO仙境傳說的主題曲 (加分題！是非題)", answer: "X", url: "./music/ハンターヒーロー テーマソング「静ノ炎」.mp3", type: "boolean", points: 300 },
+      { id: 9, title: "選出正確的遊戲名稱 (選擇題)", answer: "超級瑪利歐", url: "./music/Super Mario Bros. Theme Song.mp3", type: "choice", options: ["星之卡比 夢之泉物語", "音速小子", "超級瑪利歐", "薩爾達傳說 織夢島"], points: 100 },
+      { id: 10, title: "選出正確的遊戲名稱 (選擇題)", answer: "俠盜獵車手：聖安地列斯", url: "./music/GTA San Andreas Theme Song Full !!.mp3", type: "choice", options: ["俠盜獵車手", "俠盜獵車手：聖安地列斯", "俠盜獵車手V", "俠盜獵車手：罪惡都市"], points: 100 },
+      { id: 11, title: "選出正確的遊戲名稱 (選擇題)", answer: "俠盜獵車手V", url: "./music/M83 - Midnight City.mp3", type: "choice", options: ["俠盜獵車手：罪惡都市", "俠盜獵車手：聖安地列斯", "黑街聖徒", "俠盜獵車手V"], points: 100 },
+      { id: 12, title: "選出正確的遊戲名稱 (選擇題)", answer: "仙境傳說", url: "./music/[KTV]RO經典歌曲 仙境傳說 永遠に...Love Forever.mp3", type: "choice", options: ["魔力寶貝", "仙境傳說", "天堂", "石器時代"], points: 100 },
+      { id: 13, title: "是否為卡比之星 鏡之大迷宮主題曲(是非題)", answer: "X", url: "./music/Kirby dream land theme song.mp3", type: "boolean", points: 100 },
+      { id: 14, title: "選出正確的遊戲名稱 (選擇題)", answer: "三國無雙2", url: "./music/ARENA <行軍>.mp3", type: "choice", options: ["三國無雙2", "快打旋風5", "潛龍碟影:再復仇", "惡魔獵人5"], points: 100 },
+      { id: 15, title: "選出正確的遊戲名稱 (選擇題)", answer: "紅色警戒3", url: "./music/Red Alert 3 Theme - Soviet March with lyrics 紅色警戒3主題曲(三國語言字幕).mp3", type: "choice", options: ["英雄連隊3", "紅色警戒3", "世紀帝國3", "鋼鐵之心4"], points: 100 },
+      { id: 16, title: "選出正確的遊戲名稱 (送分選擇題)", answer: "俄羅斯方塊", url: "./music/Original Tetris theme (Tetris Soundtrack).mp3", type: "choice", options: ["貪食蛇", "魔法氣泡2", "俄羅斯方塊", "皮卡丘打排球"], points: 50 },
+      { id: 17, title: "是否為 爆爆王 主畫面音樂 (是非題)", answer: "X", url: "./music/跑跑卡丁車 主畫面 音樂.mp3", type: "boolean", points: 100 },
+      { id: 18, title: "選出正確的遊戲名稱 (選擇題)", answer: "神魔之塔", url: "./music/神魔之塔 夜幕下的旅途 (v1.0夜間bgm).mp3", type: "choice", options: ["龍族拼圖", "神魔之塔", "怪物彈珠", "爐石戰記"], points: 100 },
+      { id: 19, title: "選出正確的遊戲名稱 (選擇題)", answer: "艾爾登法環", url: "./music/Elden Ring Main Theme (The Final Battle) EPIC VERSION.mp3", type: "choice", options: ["黑神話悟空", "艾爾登法環", "黑暗靈魂3", "隻狼"], points: 200 },
+      { id: 20, title: "🔥 選出正確的遊戲名稱 (加分選擇題)", answer: "NBA 2K12", url: "./music/Kurtis Blow - Basketball (Official Music Video).mp3", type: "choice", options: ["Freestyle Street Basketball", "Football Manager 2014", "NBA 2K12", "皮卡丘打排球"], points: 200 },
+      { id: 21, title: "選出正確的遊戲名稱 (選擇題)", answer: "星露谷物語", url: "./music/Stardew Valley OST - Stardew Valley Overture.mp3", type: "choice", options: ["泰拉瑞亞", "Minecraft", "Don't Starve Together", "星露谷物語"], points: 100 },
+      { id: 22, title: "選出正確的遊戲名稱 (選擇題)", answer: "三國殺", url: "./music/三国杀主题曲(游戏中背景音乐).mp3", type: "choice", options: ["三國殺", "仙劍奇俠傳", "金庸群俠傳", "天龍八部 Online"], points: 100 },
+      { id: 23, title: "選出正確的遊戲名稱 (選擇題)", answer: "世紀帝國2", url: "./music/世紀帝國2 主選單音樂 (征服者入侵 被遺忘的王朝).mp3", type: "choice", options: ["文明帝國4", "世紀帝國2", "紅色緊戒2", "全面戰爭:三國"], points: 100 },
+      { id: 24, title: "是否為 上古卷軸4 主畫面歌曲 (是非題)", answer: "O", url: "./music/Dragonborn.mp3", type: "boolean", points: 100 },
+      { id: 25, title: "選出正確的遊戲名稱 (選擇題)", answer: "任天堂明星大亂鬥", url: "./music/Super Smash Bros. Brawl - Intro [60fps].mp3", type: "choice", options: ["貓咪大戰爭", "節奏天國", "任天堂明星大亂鬥", "糖豆人"], points: 100 },
+      { id: 26, title: "選出正確的遊戲名稱 (選擇題)", answer: "Minecraft", url: "./music/Minecraft.mp3", type: "choice", options: ["瑪奇Mabinogi", "泰拉瑞亞", "Minecraft", "楓之谷"], points: 100 },
+      { id: 27, title: "選出正確的遊戲名稱 (選擇題)", answer: "貓咪大戰爭", url: "./music/【貓咪大戰爭】BGM1.mp3", type: "choice", options: ["爆爆王", "跑跑卡丁車", "彈彈堂", "貓咪大戰爭"], points: 200 },
+      { id: 28, title: "選出正確的遊戲名稱 (選擇題)", answer: "最後一戰", url: "./music/Halo Theme Song Original.mp3", type: "choice", options: ["泰坦殞落2", "最後一戰", "星海爭霸2", "流亡黯道"], points: 100 },
+      { id: 29, title: "選出正確的遊戲名稱 (選擇題)", answer: "爆爆王", url: "./music/跑跑卡丁車 主畫面 音樂.mp3", type: "choice", options: ["賽爾號", "爆爆王", "彈彈堂", "糖豆人"], points: 200 },
+      { id: 30, title: "Terraria Soundtrack (是非題)", answer: "O", url: "./music/Terraria Soundtrack 01 - Overworld Day.m....mp3", type: "boolean", points: 100 },
+      { id: 31, title: "選出正確的遊戲名稱 (選擇題)", answer: "鬥陣特攻", url: "./music/Overwatch Soundtracks - Victory Theme.mp3", type: "choice", options: ["電馭叛客2077", "APEX", "鬥陣特攻", "絕地戰兵2"], points: 100 },
+      { id: 32, title: "選出正確的遊戲名稱 (選擇題)", answer: "巫師3：狂獵", url: "./music/A Story You Won't Believe.mp3", type: "choice", options: ["巫師3：狂獵", "闇龍紀元2", "柏德之門3", "看門狗2"], points: 100 },
+      { id: 33, title: "選出正確的遊戲名稱 (選擇題)", answer: "魔物獵人世界：冰原", url: "./music/【MHWI】黒龍ミラボレアス 戦闘BGM③ 最終決戦 ～英雄の証～ MHWI OST Fatalis Battle Theme ③.mp3", type: "choice", options: ["魔物獵人3", "魔物獵人世界：冰原", "魔物獵人荒野", "魔物獵人崛起"], points: 200 }
     ];
 
     let currentRoomCode = "";
